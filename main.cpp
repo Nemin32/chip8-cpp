@@ -279,7 +279,7 @@ void processOpcode() {
 			}
 			break;
 
-		/*case 0xF000:
+		case 0xF000:
 			switch (nn) {
 				case 0x0007:
 					V[x] = delay;
@@ -330,7 +330,7 @@ void processOpcode() {
 					break;
 
 				case 0x0055:
-					for (int i = 0x0; i < x; i++) {
+					for (int i = 0x0; i <= x; i++) {
 						memory[I+i] = V[i];
 					}
 					
@@ -339,7 +339,7 @@ void processOpcode() {
 					break;
 
 				case 0x0065:
-					for (int i = 0x0; i < x; i++) {
+					for (int i = 0x0; i <= x; i++) {
 						V[i] = memory[I+i];
 					}
 
@@ -348,86 +348,7 @@ void processOpcode() {
 					break;
 			}
 			
-			break;*/
-
-	        case 0xF000:
-            switch(nn)
-            {
-                // FX07 - Sets VX to the value of the delay timer
-				case 0x0007:
-					V[x] = delay;
-					pc+=2;
-					break;
-
-                // FX0A - A keys press is awaited, and then stored in VX
-				case 0x000A:
-					{
-					bool kp = false;
-					for (int i = 0; i < 16; i++) {
-						if (keys[i] != 0) {
-							V[x] = i;
-							
-							kp = true;					
-						}
-					}
-					if (!kp) return;
-					pc+=2;
-					}
-					break;
-
-				case 0x0015:
-					delay = V[x];
-					pc+=2;
-					break;
-
-				case 0x0018:
-					sound = V[x];
-					pc+=2;
-					break;
-
-
-				case 0x001E:
-					V[0xF] = (I + V[x] > 0xFFF) ? 1 : 0;
-					I += V[x];
-					pc+=2;
-					break;
-
-				case 0x0029:
-					I = V[x] * 0x5;
-					pc+=2;
-					break;
-
-case 0x0033:
-					memory[I] = V[x] / 100;
-					memory[I+1] = (V[x] / 10) % 10;
-					memory[I+2] = (V[x] % 100) % 10;
-					pc+=2;					
-					break;
-
-
-				case 0x0055:
-					for (int i = 0x0; i <= x; i++) {
-						memory[I+i] = V[i];
-					}
-					
-					I += x + 1;
-					pc+=2;
-					break;
-
-				case 0x0065:
-					for (int i = 0x0; i <= x; i++) {
-						V[i] = memory[I+i];
-					}
-
-					I += x + 1;
-					pc+=2;
-					break;
-
-                default:
-                    printf ("Unknown oc [0xF000]: 0x%X\n", oc);
-            }
-            break;
-
+			break;
 	}
 
 
@@ -485,6 +406,8 @@ int main(int argc, char *argv[]) {
 		} else if (event.type == SDL_KEYDOWN) {
 			//cout << event.key.keysym.sym << "\n";
 
+			if (event.key.keysym.sym == SDLK_ESCAPE) break;
+
 			for (int i = 0; i < 16; i++) {
 				if (keymap[i] == event.key.keysym.sym) {
 					keys[i] = 1;
@@ -519,8 +442,7 @@ int main(int argc, char *argv[]) {
 			drawFlag = false;
 		}
 
-		//SDL_Delay(12);
-		std::this_thread::sleep_for(std::chrono::microseconds(2400));
+		std::this_thread::sleep_for(std::chrono::microseconds(1500));
 	}
 
 	SDL_DestroyWindow(window);
