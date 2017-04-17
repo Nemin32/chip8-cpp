@@ -2,6 +2,9 @@
 #include <fstream>
 #include <SDL2/SDL.h>
 
+#include <chrono>
+#include <thread>
+
 using namespace std;
 
 	unsigned short oc;
@@ -47,10 +50,15 @@ void initSystem() {
 	oc = 0;
 	I = 0;
 	sp = 0;
+
+	delay = 0;
+	sound = 0;
+
+	for (int i = 0; i < 16; i++) {V[i] = 0; stack[i] = 0; keys[i] = 0;}
+	for (int i = 80; i < 4096; i++) memory[i] = 0;
+
 	cout << "[SYSTEM]: Inner variables set to default.\n";
 
-	for (int i = 0; i < 16; i++) {V[i] = 0; stack[i] = 0;}
-	for (int i = 80; i < 4096; i++) memory[i] = 0;
 	for (int i = 0; i < 80; i++) memory[i] = chip8_fontset[i];
 	cout << "[SYSTEM]: Font loaded.\n";
 }
@@ -124,7 +132,7 @@ void processOpcode() {
 
 		case 0x2000:
 			stack[sp] = pc;
-			sp++;
+			++sp;
 			pc = nnn;
 			break;
 
@@ -169,23 +177,20 @@ void processOpcode() {
 					break;
 
 				case 0x1:
-					//V[0xF] = 0;
-					V[x] = V[x]|V[y];
+					V[x] |= V[y];
 					break;
 
 				case 0x2:
-					//V[0xF] = 0;
-					V[x] = V[x]&V[y];
+					V[x] &= V[y];
 					break;
 
 				case 0x3:
-					//V[0xF] = 0;
-					V[x] = V[x]^V[y];
+					V[x] ^= V[y];
 					break;
 
 				case 0x4:
-					V[0xF] = (V[y] > (0xFF - V[x])) ? 1 : 0;
 					V[x] += V[y];
+					V[0xF] = (V[y] > (0xFF - V[x])) ? 1 : 0;					
 					break;
 
 				case 0x5:
@@ -194,12 +199,12 @@ void processOpcode() {
 					break;
 
 				case 0x6:
-					V[0xF] = V[x] & 1;
+					V[0xF] = V[x] & 0x1;
 					V[x] >>= 1;
 					break;
 
 				case 0x7:
-					V[0xF] = (V[y] > V[x]) ? 1 : 0;
+					V[0xF] = (V[x] > V[y]) ? 0 : 1;
 					V[x] = V[y]-V[x];
 					break;
 
@@ -210,6 +215,7 @@ void processOpcode() {
 			}
 			pc+=2;
 			break;
+
 
 		case 0x9000:
 			if (V[x] != V[y]) {
@@ -234,6 +240,7 @@ void processOpcode() {
 			break;
 
 		case 0xD000:
+			{
 			unsigned short line;
 
 			V[0xF] = 0;
@@ -248,10 +255,12 @@ void processOpcode() {
 					}
 				}
 			}
+			}
 
 			drawFlag = true;
 			pc+=2;
 			break;
+
 
 		case 0xE000:
 			//printf("%d", V[x]);
@@ -270,7 +279,7 @@ void processOpcode() {
 			}
 			break;
 
-		case 0xF000:
+		/*case 0xF000:
 			switch (nn) {
 				case 0x0007:
 					V[x] = delay;
@@ -282,7 +291,7 @@ void processOpcode() {
 					bool kp = false;
 					for (int i = 0; i < 16; i++) {
 						if (keys[i] != 0) {
-							V[x] = keys[i];
+							V[x] = i;
 							
 							kp = true;					
 						}
@@ -339,8 +348,88 @@ void processOpcode() {
 					break;
 			}
 			
-			break;
+			break;*/
+
+	        case 0xF000:
+            switch(nn)
+            {
+                // FX07 - Sets VX to the value of the delay timer
+				case 0x0007:
+					V[x] = delay;
+					pc+=2;
+					break;
+
+                // FX0A - A keys press is awaited, and then stored in VX
+				case 0x000A:
+					{
+					bool kp = false;
+					for (int i = 0; i < 16; i++) {
+						if (keys[i] != 0) {
+							V[x] = i;
+							
+							kp = true;					
+						}
+					}
+					if (!kp) return;
+					pc+=2;
+					}
+					break;
+
+				case 0x0015:
+					delay = V[x];
+					pc+=2;
+					break;
+
+				case 0x0018:
+					sound = V[x];
+					pc+=2;
+					break;
+
+
+				case 0x001E:
+					V[0xF] = (I + V[x] > 0xFFF) ? 1 : 0;
+					I += V[x];
+					pc+=2;
+					break;
+
+				case 0x0029:
+					I = V[x] * 0x5;
+					pc+=2;
+					break;
+
+case 0x0033:
+					memory[I] = V[x] / 100;
+					memory[I+1] = (V[x] / 10) % 10;
+					memory[I+2] = (V[x] % 100) % 10;
+					pc+=2;					
+					break;
+
+
+				case 0x0055:
+					for (int i = 0x0; i <= x; i++) {
+						memory[I+i] = V[i];
+					}
+					
+					I += x + 1;
+					pc+=2;
+					break;
+
+				case 0x0065:
+					for (int i = 0x0; i <= x; i++) {
+						V[i] = memory[I+i];
+					}
+
+					I += x + 1;
+					pc+=2;
+					break;
+
+                default:
+                    printf ("Unknown oc [0xF000]: 0x%X\n", oc);
+            }
+            break;
+
 	}
+
 
 	if (delay > 0) --delay;
 	if (sound > 0) {
@@ -388,6 +477,7 @@ int main(int argc, char *argv[]) {
 	SDL_RenderPresent(renderer);
 
 	while (true) {
+		processOpcode();
 		SDL_PollEvent(&event);
 
 		if (event.type == SDL_QUIT) {
@@ -409,7 +499,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}		
-		processOpcode();
+		
 
 		
 		if (drawFlag) {
@@ -429,7 +519,8 @@ int main(int argc, char *argv[]) {
 			drawFlag = false;
 		}
 
-		SDL_Delay(1000/60);
+		//SDL_Delay(12);
+		std::this_thread::sleep_for(std::chrono::microseconds(2400));
 	}
 
 	SDL_DestroyWindow(window);
