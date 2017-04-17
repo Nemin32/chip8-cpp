@@ -231,7 +231,7 @@ void processOpcode() {
 			pc+=2;
 			break;
 
-		case 0xD000: //TODO: Oh boy
+		case 0xD000:
 			unsigned short line;
 
 			V[0xF] = 0;
@@ -347,17 +347,21 @@ int main(int argc, char *argv[]) {
 	initSystem();
 	loadProgram(argv[1]);
 
+	SDL_RenderClear(renderer);
+
 	while (true) {
 		SDL_PollEvent(&event);
 
 		if (event.type == SDL_QUIT) {
 			break;
-		}
+		} //else if (event.type == SDL_KEYDOWN) {
+			processOpcode();
+
+		//}
 
 
 		
-		processOpcode();
-
+		
 		if (drawFlag) {
 			SDL_RenderClear(renderer);
 			SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
@@ -375,7 +379,7 @@ int main(int argc, char *argv[]) {
 			drawFlag = false;
 		}
 
-
+		SDL_Delay(30);
 	}
 
 	SDL_DestroyWindow(window);
