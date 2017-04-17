@@ -7,23 +7,22 @@
 
 using namespace std;
 
-	unsigned short oc;
-	unsigned char memory[4096];
-	unsigned char V[16];
+unsigned short oc;
+unsigned char memory[4096];
+unsigned char V[16];
 
-	unsigned short I;
-	unsigned short pc;
+unsigned short I;
+unsigned short pc;
 
-	//TODO: hang
-	unsigned char delay;
-	unsigned char sound;
+unsigned char delay;
+unsigned char sound;
 
-	unsigned short stack[16];
-	unsigned short sp;
-	unsigned char gfx[64 * 32];
+unsigned short stack[16];
+unsigned short sp;
+unsigned char gfx[64 * 32];
 
-	unsigned char keys[16];
-	bool drawFlag = false;
+unsigned char keys[16];
+bool drawFlag = false;
 
 unsigned char chip8_fontset[80] =
 { 
@@ -114,10 +113,10 @@ void processOpcode() {
 
 	switch (oc & 0xF000) {
 		case 0x0000:
-			if (n == 0x0000) { // OC == 00E0
+			if (n == 0x0000) {
 				for (int i = 0; i < 32*64; i++) gfx[i] = 0;
 				drawFlag = true;
-			} else if (n == 0x000E) { //OC == 00EE
+			} else if (n == 0x000E) {
 				--sp;
 				pc = stack[sp];
 				
@@ -404,26 +403,22 @@ int main(int argc, char *argv[]) {
 		if (event.type == SDL_QUIT) {
 			break;
 		} else if (event.type == SDL_KEYDOWN) {
-			//cout << event.key.keysym.sym << "\n";
 
 			if (event.key.keysym.sym == SDLK_ESCAPE) break;
 
 			for (int i = 0; i < 16; i++) {
 				if (keymap[i] == event.key.keysym.sym) {
 					keys[i] = 1;
-					//cout << i << " is ON\n";
 				}
 			}	
 		} else if (event.type == SDL_KEYUP) {
 			for (int i = 0; i < 16; i++) {
 				if (keymap[i] == event.key.keysym.sym) {
 					keys[i] = 0;
-					//cout << i << " is OFF\n";
 				}
 			}
-		}		
+		}
 		
-
 		
 		if (drawFlag) {
 			SDL_RenderClear(renderer);
