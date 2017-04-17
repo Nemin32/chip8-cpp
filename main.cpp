@@ -17,10 +17,9 @@ using namespace std;
 
 	unsigned short stack[16];
 	unsigned short sp;
-	bool gfx[64 * 32];
+	unsigned char gfx[64 * 32];
 
-	//TODO: billentyuzet
-	bool keys[16];
+	unsigned char keys[16];
 	bool drawFlag = false;
 
 unsigned char chip8_fontset[80] =
@@ -96,7 +95,7 @@ void drawRect(SDL_Renderer* renderer, int x, int y, int w, int h) {
 void processOpcode() {
 	oc = memory[pc] << 8 | memory[pc + 1];
 
-	cout << "[OPCODE]: OpCode " << std::hex << oc << std::dec <<" has been decoded.\n";
+	//cout << "[OPCODE]: OpCode " << std::hex << oc << std::dec <<" has been decoded.\n";
 
 	unsigned short nnn = oc & 0x0FFF;
 	unsigned short nn = oc & 0x00FF;
@@ -108,11 +107,14 @@ void processOpcode() {
 	switch (oc & 0xF000) {
 		case 0x0000:
 			if (n == 0x0000) { // OC == 00E0
-				for (int i = 0; i < 32*64; i++) gfx[i] = false;
-			} else { //OC == 00EE
-				pc = stack[sp];
+				for (int i = 0; i < 32*64; i++) gfx[i] = 0;
+				drawFlag = true;
+			} else if (n == 0x000E) { //OC == 00EE
 				--sp;
+				pc = stack[sp];
+				
 			}
+			
 			pc+=2;
 			break;
 
@@ -167,17 +169,17 @@ void processOpcode() {
 					break;
 
 				case 0x1:
-					V[0xF] = 0;
+					//V[0xF] = 0;
 					V[x] = V[x]|V[y];
 					break;
 
 				case 0x2:
-					V[0xF] = 0;
+					//V[0xF] = 0;
 					V[x] = V[x]&V[y];
 					break;
 
 				case 0x3:
-					V[0xF] = 0;
+					//V[0xF] = 0;
 					V[x] = V[x]^V[y];
 					break;
 
@@ -187,7 +189,7 @@ void processOpcode() {
 					break;
 
 				case 0x5:
-					V[0xF] = (V[y] > V[x]) ? 1 : 0;
+					V[0xF] = (V[y] > V[x]) ? 0 : 1;
 					V[x] -= V[y];
 					break;
 
@@ -240,9 +242,9 @@ void processOpcode() {
 
 				for (int xline = 0; xline < 8; xline++) {
 					if ((line & (0x80 >> xline)) != 0) {
-						if (gfx[(V[x] + xline) + (V[y] + yline) * 64]) V[0xF] = 1;
+						if (gfx[V[x] + xline + ((V[y] + yline) * 64)] == 1) V[0xF] = 1;
 
-						gfx[(V[x] + xline) + (V[y] + yline) * 64] ^= true;
+						gfx[(V[x] + xline) + (V[y] + yline) * 64] ^= 1;
 					}
 				}
 			}
@@ -252,14 +254,15 @@ void processOpcode() {
 			break;
 
 		case 0xE000:
+			//printf("%d", V[x]);
 			if (nn == 0x009E) {
-				if (keys[V[x]]) {
+				if (keys[V[x]] != 0) {
 					pc+=4;				
 				} else {
 					pc+=2;
 				}
 			} else if (nn == 0x00A1) {
-				if (!keys[V[x]]) {
+				if (keys[V[x]] == 0) {
 					pc+=4;				
 				} else {
 					pc+=2;
@@ -275,6 +278,18 @@ void processOpcode() {
 					break;
 
 				case 0x000A:
+					{
+					bool kp = false;
+					for (int i = 0; i < 16; i++) {
+						if (keys[i] != 0) {
+							V[x] = keys[i];
+							
+							kp = true;					
+						}
+					}
+					if (!kp) return;
+					pc+=2;
+					}
 					break;
 
 				case 0x0015:
@@ -336,6 +351,28 @@ void processOpcode() {
 
 const int SIZE = 16;
 
+const uint8_t keymap[16] = { 
+	SDLK_1,
+	SDLK_2,
+	SDLK_3,
+	SDLK_4,
+
+	SDLK_q,
+	SDLK_w,
+	SDLK_e,
+	SDLK_r,
+
+	SDLK_a,
+	SDLK_s,
+	SDLK_d,
+	SDLK_f,
+
+	SDLK_y,
+	SDLK_x,
+	SDLK_c,
+	SDLK_v
+};
+
 int main(int argc, char *argv[]) {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_Window* window;
@@ -348,19 +385,32 @@ int main(int argc, char *argv[]) {
 	loadProgram(argv[1]);
 
 	SDL_RenderClear(renderer);
+	SDL_RenderPresent(renderer);
 
 	while (true) {
 		SDL_PollEvent(&event);
 
 		if (event.type == SDL_QUIT) {
 			break;
-		} //else if (event.type == SDL_KEYDOWN) {
-			processOpcode();
+		} else if (event.type == SDL_KEYDOWN) {
+			//cout << event.key.keysym.sym << "\n";
 
-		//}
+			for (int i = 0; i < 16; i++) {
+				if (keymap[i] == event.key.keysym.sym) {
+					keys[i] = 1;
+					//cout << i << " is ON\n";
+				}
+			}	
+		} else if (event.type == SDL_KEYUP) {
+			for (int i = 0; i < 16; i++) {
+				if (keymap[i] == event.key.keysym.sym) {
+					keys[i] = 0;
+					//cout << i << " is OFF\n";
+				}
+			}
+		}		
+		processOpcode();
 
-
-		
 		
 		if (drawFlag) {
 			SDL_RenderClear(renderer);
@@ -369,7 +419,7 @@ int main(int argc, char *argv[]) {
 
 			for (int y = 0; y <  32; y++) {
 				for (int x = 0; x < 64; x++) {		
-					if (gfx[x + y * 64]) drawRect(renderer, x * SIZE, y * SIZE, SIZE, SIZE);
+					if (gfx[x + y * 64] != 0) drawRect(renderer, x * SIZE, y * SIZE, SIZE, SIZE);
 				}
 			}
 
@@ -379,7 +429,7 @@ int main(int argc, char *argv[]) {
 			drawFlag = false;
 		}
 
-		SDL_Delay(30);
+		SDL_Delay(1000/60);
 	}
 
 	SDL_DestroyWindow(window);
