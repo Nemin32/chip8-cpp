@@ -7,4 +7,4 @@ Install by issuing the `make` command.
 Delete by using `make clean`.
 
 ### Usage
-chip8 <file-name>
+chip8 [file-name]
