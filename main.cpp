@@ -84,7 +84,7 @@ bool loadProgram(char* filename) {
 		exit(1); 
 	}
 
-
+	return true;
 }
 
 
