@@ -1,6 +1,7 @@
 #include "emulator.hpp"
 #include <cstdint>
 #include <iostream>
+#include <fstream>
 
 void Chip8::update_timers() {
   if (this->delayTimer > 0)
@@ -11,9 +12,31 @@ void Chip8::update_timers() {
   }
 }
 
+void Chip8::load_fontmap() {
+    std::copy(std::begin(FONTSET), std::end(FONTSET), std::begin(memory));
+}
+
+void Chip8::load_rom(const std::string& fileName) {
+	std::ifstream file(fileName, std::ios::binary | std::ios::ate);
+
+	if (file.is_open()) {
+		int size = file.tellg();
+		file.clear(); file.seekg(0, std::ios::beg); //Go to beginning
+
+		for (int i = 0; i < size; i++) {
+			file >> std::noskipws >> memory[i + 512];
+		}
+
+		file.close();
+	} else {
+		std::cout << "[FILE]: ERROR: Could not open file. Exiting.\n";
+		exit(1); 
+	}
+}
+
 void Chip8::tick() {
   uint16_t instruction = this->memory[this->pc];
-  instruction = (instruction & 0xFF00 >> 8) | (instruction & 0x00FF << 8);
+  instruction = (instruction & 0xFF00 >> 8) | (instruction & 0xFF << 8);
 
   this->handle_instruction(instruction);
   this->update_timers();
@@ -22,10 +45,10 @@ void Chip8::tick() {
 void Chip8::handle_instruction(const uint16_t instruction) {
   const uint8_t op = (instruction & 0xF000) >> (3 * 4);
   const uint8_t x = (instruction & 0x0F00) >> (2 * 4);
-  const uint8_t y = (instruction & 0x00F0) >> (1 * 4);
+  const uint8_t y = (instruction & 0xF0) >> (1 * 4);
   const uint16_t nnn = instruction & 0x0FFF;
-  const uint16_t kk = instruction & 0x00FF;
-  const uint16_t n = instruction & 0x000F;
+  const uint16_t kk = instruction & 0xFF;
+  const uint16_t n = instruction & 0x0F;
 
   switch (op) {
   case 0x0:
@@ -165,13 +188,13 @@ void Chip8::handle_instruction(const uint16_t instruction) {
 
   case 0xE:
     // printf("%d", V[x]);
-    if (kk == 0x009E) {
+    if (kk == 0x9E) {
       if (keys[V[x]] != 0) {
         pc += 4;
       } else {
         pc += 2;
       }
-    } else if (kk == 0x00A1) {
+    } else if (kk == 0xA1) {
       if (keys[V[x]] == 0) {
         pc += 4;
       } else {
@@ -182,12 +205,12 @@ void Chip8::handle_instruction(const uint16_t instruction) {
 
   case 0xF:
     switch (kk) {
-    case 0x0007:
+    case 0x07:
       V[x] = delayTimer;
       pc += 2;
       break;
 
-    case 0x000A: {
+    case 0x0A: {
       bool kp = false;
       for (int i = 0; i < 16; i++) {
         if (keys[i] != 0) {
@@ -201,35 +224,35 @@ void Chip8::handle_instruction(const uint16_t instruction) {
       pc += 2;
     } break;
 
-    case 0x0015:
+    case 0x15:
       delayTimer = V[x];
       pc += 2;
       break;
 
-    case 0x0018:
+    case 0x18:
       soundTimer = V[x];
       pc += 2;
       break;
 
-    case 0x001E:
+    case 0x1E:
       V[0xF] = (I + V[x] > 0xFFF) ? 1 : 0;
       I += V[x];
       pc += 2;
       break;
 
-    case 0x0029:
+    case 0x29:
       I = V[x] * 0x5;
       pc += 2;
       break;
 
-    case 0x0033:
+    case 0x33:
       memory[I] = V[x] / 100;
       memory[I + 1] = (V[x] / 10) % 10;
       memory[I + 2] = (V[x] % 100) % 10;
       pc += 2;
       break;
 
-    case 0x0055:
+    case 0x55:
       for (int i = 0x0; i <= x; i++) {
         memory[I + i] = V[i];
       }
@@ -238,7 +261,7 @@ void Chip8::handle_instruction(const uint16_t instruction) {
       pc += 2;
       break;
 
-    case 0x0065:
+    case 0x65:
       for (int i = 0x0; i <= x; i++) {
         V[i] = memory[I + i];
       }
