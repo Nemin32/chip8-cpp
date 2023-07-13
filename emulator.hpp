@@ -44,14 +44,14 @@ public:
   bool should_draw() const {return this->drawFlag;}
   void update_timers();
 
-private:
+// private:
   void load_fontmap();
   void load_rom(const std::string& fileName);
   void handle_instruction(const uint16_t instruction);
 
   // Memory
   std::array<uint8_t, FRAMEBUFFER_SIZE> framebuffer;
-  std::array<uint16_t, 4096> memory;
+  std::array<uint8_t, 4096> memory;
   std::array<uint8_t, 16> V;
   std::array<bool, 16> keys;
 
