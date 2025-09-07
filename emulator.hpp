@@ -48,6 +48,7 @@ public:
   void load_fontmap();
   void load_rom(const std::string& fileName);
   void handle_instruction(const uint16_t instruction);
+  void blitTexture(uint8_t n, uint16_t x, uint16_t y);
 
   // Memory
   std::array<uint8_t, FRAMEBUFFER_SIZE> framebuffer;

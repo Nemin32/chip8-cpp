@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
-#include <ratio>
 
 void Chip8::update_timers() {
   if (this->delayTimer > 0)
@@ -54,6 +53,29 @@ void Chip8::tick() {
   this->update_timers();
 }
 
+void Chip8::blitTexture(uint8_t n, uint16_t x, uint16_t y) 
+{
+  uint16_t line;
+
+  V[0xF] = 0;
+  drawFlag = true;
+  for (int yline = 0; yline < n; yline++) 
+  {
+    line = memory[I + yline];
+
+    for (int xline = 0; xline < 8; xline++)
+    {
+      if ((line & (0x80 >> xline)) != 0)
+      {
+        const int position = V[x] + xline + ((V[y] + yline) * 64);
+
+        V[0xF] |= (framebuffer[position] == 1);
+        framebuffer[position] ^= 1;
+      }
+    }
+  }
+}
+
 void Chip8::handle_instruction(const uint16_t instruction) {
   const uint16_t op  = (instruction & 0xF000) >> (3 * 4);
   const uint16_t x   = (instruction & 0x0F00) >> (2 * 4);
@@ -97,24 +119,7 @@ void Chip8::handle_instruction(const uint16_t instruction) {
     case 0xA: I = nnn; break;
     case 0xB: pc = V[0] + nnn - step; break;
     case 0xC: V[x] = (rand() % 256) & kk; break;
-    case 0xD: {
-      uint16_t line;
-
-      V[0xF] = 0;
-      drawFlag = true;
-      for (int yline = 0; yline < n; yline++) {
-        line = memory[I + yline];
-
-        for (int xline = 0; xline < 8; xline++) {
-          if ((line & (0x80 >> xline)) != 0) {
-            const int position = V[x] + xline + ((V[y] + yline) * 64);
-
-            V[0xF] |= (framebuffer[position] == 1);
-            framebuffer[position] ^= 1;
-          }
-        }
-      }
-    } break;
+    case 0xD: blitTexture(n, x, y); break;
     case 0xE: {
       switch (kk) {
         case 0x9E: pc += (keys[V[x]] != 0) ? step : 0; break;
